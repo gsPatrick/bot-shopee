@@ -1,0 +1,9 @@
+services:
+  shopee-bot:
+    build: .
+    container_name: shopee-telegram-bot
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    volumes:
+      - ./output_video:/app/output_video
