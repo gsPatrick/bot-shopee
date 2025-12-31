@@ -3,7 +3,7 @@ services:
     build: .
     container_name: shopee-telegram-bot
     restart: unless-stopped
-    environment:
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    env_file:
+      - .env
     volumes:
       - ./output_video:/app/output_video

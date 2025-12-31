@@ -13,7 +13,11 @@ from payment_service import PaymentService
 # ============================================================
 # CONFIGURAÇÃO - Substitua pelo seu token do BotFather
 # ============================================================
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "SEU_TOKEN_AQUI")
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+if not BOT_TOKEN or BOT_TOKEN == "SEU_TOKEN_AQUI":
+    raise ValueError("❌ Erro: A variável de ambiente TELEGRAM_BOT_TOKEN não foi configurada!\nVerifique se o arquivo .env existe e está preenchido corretamente.")
+
 
 # Inicializa componentes
 bot = telebot.TeleBot(BOT_TOKEN)
