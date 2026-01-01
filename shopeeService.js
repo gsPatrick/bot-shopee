@@ -4,6 +4,8 @@
  */
 
 const axios = require('axios');
+const { wrapper } = require('axios-cookiejar-support');
+const { CookieJar } = require('tough-cookie');
 const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
@@ -13,13 +15,19 @@ class ShopeeDownloader {
         this.outputDir = outputDir;
         this.URL_HOME = 'https://svxtract.com/';
         this.URL_DOWNLOAD = 'https://svxtract.com/function/download/downloader.php';
-        
+
         this.HEADERS = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
-            'Accept': '*/*',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
             'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Referer': 'https://svxtract.com/',
-            'Origin': 'https://svxtract.com'
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Cache-Control': 'max-age=0'
         };
 
         // Padrões regex para capturar o token CSRF
@@ -36,6 +44,17 @@ class ShopeeDownloader {
         if (!fs.existsSync(this.outputDir)) {
             fs.mkdirSync(this.outputDir, { recursive: true });
         }
+    }
+
+    _createSession() {
+        // Cria um cookie jar para manter cookies entre requisições
+        const jar = new CookieJar();
+        const client = wrapper(axios.create({
+            jar,
+            headers: this.HEADERS,
+            timeout: 30000
+        }));
+        return client;
     }
 
     async _getCsrfToken(session) {
@@ -74,14 +93,11 @@ class ShopeeDownloader {
      * Baixa o vídeo da Shopee e retorna o caminho do arquivo
      */
     async download(shopeeUrl) {
-        // Cria instância axios com cookies (simulando sessão)
-        const session = axios.create({
-            headers: this.HEADERS,
-            withCredentials: true,
-            jar: true
-        });
+        // Cria sessão com cookie jar
+        const session = this._createSession();
 
-        // 1. Captura o token CSRF
+        // 1. Acessa a página inicial para obter cookies e token
+        console.log('   Acessando página inicial...');
         const csrfToken = await this._getCsrfToken(session);
         if (!csrfToken) {
             throw new Error('Não foi possível capturar o token CSRF.');
@@ -89,16 +105,17 @@ class ShopeeDownloader {
 
         console.log(`   Token capturado: ${csrfToken.substring(0, 16)}...`);
 
-        // 2. Requisição de download
-        const params = new URLSearchParams({
-            url: shopeeUrl,
-            csrf_token: csrfToken,
-            preview: '1'
-        });
+        // 2. Requisição de download usando a mesma sessão (cookies)
+        const downloadUrl = `${this.URL_DOWNLOAD}?url=${encodeURIComponent(shopeeUrl)}&csrf_token=${csrfToken}&preview=1`;
 
-        const response = await session.get(`${this.URL_DOWNLOAD}?${params.toString()}`, {
+        console.log('   Baixando vídeo...');
+        const response = await session.get(downloadUrl, {
             responseType: 'stream',
-            headers: this.HEADERS
+            headers: {
+                ...this.HEADERS,
+                'Referer': this.URL_HOME,
+                'Origin': 'https://svxtract.com'
+            }
         });
 
         if (response.status !== 200) {
@@ -108,7 +125,13 @@ class ShopeeDownloader {
         // 3. Verifica se é realmente um vídeo
         const contentType = response.headers['content-type'] || '';
         if (contentType.includes('text/html')) {
-            throw new Error('O serviço retornou HTML. O link pode ser inválido.');
+            // Lê o corpo para ver o erro
+            let errorBody = '';
+            for await (const chunk of response.data) {
+                errorBody += chunk.toString();
+                if (errorBody.length > 500) break;
+            }
+            throw new Error(`O serviço retornou HTML: ${errorBody.substring(0, 200)}`);
         }
 
         // 4. Salva o arquivo
@@ -119,7 +142,10 @@ class ShopeeDownloader {
         response.data.pipe(writer);
 
         return new Promise((resolve, reject) => {
-            writer.on('finish', () => resolve(path.resolve(filepath)));
+            writer.on('finish', () => {
+                console.log(`   Arquivo salvo: ${filepath}`);
+                resolve(path.resolve(filepath));
+            });
             writer.on('error', reject);
         });
     }
