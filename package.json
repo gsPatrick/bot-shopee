@@ -1,0 +1,19 @@
+{
+  "name": "shopee-video-bot",
+  "version": "2.0.0",
+  "description": "Telegram Bot para download de vídeos da Shopee sem marca d'água",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "sql.js": "^1.10.0",
+    "node-telegram-bot-api": "^0.64.0",
+    "uuid": "^9.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
