@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Database
+*.db
+
+# Environment variables
+.env
+
+# Output videos
+output_video/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/
+
+# Python (legacy - removed)
+__pycache__/
+*.pyc
+*.pyo
+venv/
