@@ -106,7 +106,8 @@ class ShopeeDownloader {
         console.log(`   Token capturado: ${csrfToken.substring(0, 16)}...`);
 
         // 2. Requisição de download usando a mesma sessão (cookies)
-        const downloadUrl = `${this.URL_DOWNLOAD}?url=${encodeURIComponent(shopeeUrl)}&csrf_token=${csrfToken}&preview=1`;
+        // Removemos preview=1 para tentar pegar a qualidade original
+        const downloadUrl = `${this.URL_DOWNLOAD}?url=${encodeURIComponent(shopeeUrl)}&csrf_token=${csrfToken}`;
 
         console.log('   Baixando vídeo...');
         const response = await session.get(downloadUrl, {
