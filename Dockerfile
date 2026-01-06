@@ -16,6 +16,7 @@ RUN npm install --production
 
 # Copia os arquivos do projeto
 COPY shopeeService.js .
+COPY shopeeServiceNew.js .
 COPY database.js .
 COPY paymentService.js .
 COPY bot.js .
