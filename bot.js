@@ -62,7 +62,7 @@ async function sendPaymentOptions(chatId, userId, reason = 'limit_reached') {
     );
 
     // Gera Pagamento Pix
-    const paymentData = paymentService.createPixPayment(userId);
+    const paymentData = await paymentService.createPixPayment(userId);
     const paymentId = paymentData.payment_id;
     const pixCode = paymentData.pix_copy_paste;
 
@@ -219,7 +219,7 @@ bot.on('callback_query', async (query) => {
 
     if (data.startsWith('check_pay_')) {
         const paymentId = data.replace('check_pay_', '');
-        const paid = paymentService.checkPaymentStatus(paymentId);
+        const paid = await paymentService.checkPaymentStatus(paymentId);
 
         if (paid) {
             // Adiciona 30 dias de premium
