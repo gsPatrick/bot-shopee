@@ -31,11 +31,25 @@ class PaymentService {
             // Validação e Conversão dos dados
             const valueInCents = Math.round(amount * 100);
 
-            // Tratamento da URL do Webhook
+            // Tratamento da URL do Webhook (Limpeza rigorosa)
             let webhookUrl = process.env.WEBHOOK_URL;
-            if (!webhookUrl ||
-                webhookUrl.includes('SEU_WEBHOOK_AQUI') ||
-                !webhookUrl.startsWith('http')) {
+
+            try {
+                if (webhookUrl) {
+                    // Tenta remover textos extras como "(Opcional...)"
+                    // Pega apenas a primeira parte da string antes do espaço
+                    webhookUrl = webhookUrl.split(' ')[0].trim();
+
+                    // Valida se é uma URL válida
+                    new URL(webhookUrl);
+
+                    // Se passar, verifica se não é o placeholder
+                    if (webhookUrl.includes('SEU_WEBHOOK_AQUI')) {
+                        webhookUrl = null;
+                    }
+                }
+            } catch (e) {
+                console.warn(`URL de Webhook inválida no .env: ${process.env.WEBHOOK_URL}`);
                 webhookUrl = null;
             }
 
