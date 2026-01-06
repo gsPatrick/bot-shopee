@@ -5,7 +5,6 @@ const { v4: uuidv4 } = require('uuid');
 
 class ShopeeDownloaderNew {
     constructor(outputDir = 'output_video') {
-        this.API_URL = 'https://svdown.tech/api/resolve';
         this.outputDir = outputDir;
 
         // Garante que o diretório de saída existe
@@ -19,50 +18,56 @@ class ShopeeDownloaderNew {
     }
 
     /**
-     * Baixa o vídeo usando a nova API svdown.tech
-     * @param {string} shopeeUrl 
-     * @returns {Promise<string>} Caminho do arquivo baixado
+     * Baixa o vídeo fazendo scrape direto da página da Shopee (sv.shopee.com.br)
+     * Isso bypassa APIs de terceiros e pega o link original (vod.susercontent.com)
      */
     async download(shopeeUrl) {
         try {
-            console.log(`🚀 Iniciando download via SVDown: ${shopeeUrl}`);
+            console.log(`🚀 Iniciando download direto: ${shopeeUrl}`);
 
-            // 1. Resolve os dados do vídeo na API
-            const { data } = await axios.post(this.API_URL, {
-                url: shopeeUrl
-            }, {
+            // 1. Acessa a página da Shopee Video para pegar o HTML
+            const response = await axios.get(shopeeUrl, {
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Origin': 'https://svdown.tech',
-                    'Referer': 'https://svdown.tech/',
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
                 }
             });
 
-            console.log('   Dados da API recebidos:', data && data.title ? 'Sucesso' : 'Falha');
+            const html = response.data;
 
-            if (!data || !data.video || !data.video.url) {
-                console.error('   API Response:', data);
-                throw new Error('API não retornou a URL do vídeo.');
+            // 2. Procura por links de vídeo (.mp4) no HTML
+            // Regex para pegar URLs que terminam com .mp4
+            const mp4Matches = html.match(/https?:\/\/[^"']+\.mp4/g);
+
+            if (!mp4Matches || mp4Matches.length === 0) {
+                console.error('   Nenhum arquivo .mp4 encontrado na página.');
+                throw new Error('Não foi possível extrair o link do vídeo da página.');
             }
 
-            const videoUrl = data.video.url;
-            const title = data.title || 'video_shopee';
-            const quality = data.video.qualityLabel || 'unknown';
+            // Pega o primeiro match (geralmente é o melhor)
+            let videoUrl = mp4Matches[0];
 
-            console.log(`   URL do Vídeo: ${videoUrl}`);
-            console.log(`   Qualidade: ${quality}`);
+            // Tenta priorizar URLs que pareçam "clean" (sem muitos sufixos numéricos), se houver multiplos
+            // Ex: .../video.mp4 vs .../video.12345.mp4
+            if (mp4Matches.length > 1) {
+                const cleanMatch = mp4Matches.find(m => !m.match(/\.\d+\.\d+\.mp4$/));
+                if (cleanMatch) videoUrl = cleanMatch;
+            }
 
-            // 2. Baixa o arquivo de vídeo real
+            console.log(`   URL do Vídeo Encontrada: ${videoUrl}`);
+
+            // 3. Baixa o arquivo de vídeo
             const filename = `video_${uuidv4().split('-')[0]}.mp4`;
             const filepath = path.join(this.outputDir, filename);
-
             const writer = fs.createWriteStream(filepath);
 
             const videoResponse = await axios({
                 url: videoUrl,
                 method: 'GET',
-                responseType: 'stream'
+                responseType: 'stream',
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                }
             });
 
             videoResponse.data.pipe(writer);
@@ -79,11 +84,8 @@ class ShopeeDownloaderNew {
             });
 
         } catch (error) {
-            console.error('❌ Erro no SVDown:', error.message);
-            if (error.response) {
-                console.error('   Detalhes:', error.response.data);
-            }
-            throw new Error('Falha ao baixar vídeo pela nova API.');
+            console.error('❌ Erro no Download Direto:', error.message);
+            throw new Error('Falha ao baixar vídeo diretamente da Shopee.');
         }
     }
 }

@@ -1,0 +1,82 @@
+--- INÍCIO TESTE 2026-01-06T18:45:32.817Z ---
+
+
+
+=== TESTANDO: 1. Básico (Origin/Referer simples) ===
+Headers enviados:
+{
+  "Content-Type": "application/json",
+  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "Origin": "https://svdown.tech",
+  "Referer": "https://svdown.tech/"
+}
+
+STATUS: 401 Unauthorized
+HEADERS RESPOSTA:
+{
+  "date": "Tue, 06 Jan 2026 18:45:33 GMT",
+  "content-type": "application/json; charset=utf-8",
+  "content-length": "24",
+  "connection": "keep-alive",
+  "etag": "W/\"18-XPDV80vbMk4yY1/PADG4jYM4rSI\"",
+  "vary": "Accept-Encoding",
+  "x-powered-by": "Express",
+  "cf-cache-status": "DYNAMIC",
+  "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+  "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=pmwR2D0Gr8MsoPA8JTZN0o605jlok5jyxvbq1o17MFcp2JjO5LJXCUvij7ymzY0IXF1bDUWFE9aoHpb%2B75%2FGoT%2BNX8EhGhekNOHQ\"}]}",
+  "server": "cloudflare",
+  "cf-ray": "9b9d5f828afcaf70-GRU",
+  "alt-svc": "h3=\":443\"; ma=86400"
+}
+BODY RESPOSTA:
+{
+  "error": "Unauthorized"
+}
+❌ FALHA NESTE CENÁRIO
+
+
+=== TESTANDO: 2. Emulação Chrome Completo ===
+Headers enviados:
+{
+  "Content-Type": "application/json",
+  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "Origin": "https://svdown.tech",
+  "Referer": "https://svdown.tech/",
+  "Accept": "application/json, text/plain, */*",
+  "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+  "Accept-Encoding": "gzip, deflate, br",
+  "Sec-Ch-Ua": "\"Not_A Brand\";v=\"8\", \"Chromium\";v=\"120\", \"Google Chrome\";v=\"120\"",
+  "Sec-Ch-Ua-Mobile": "?0",
+  "Sec-Ch-Ua-Platform": "\"macOS\"",
+  "Sec-Fetch-Dest": "empty",
+  "Sec-Fetch-Mode": "cors",
+  "Sec-Fetch-Site": "same-origin",
+  "Connection": "keep-alive"
+}
+
+STATUS: 401 Unauthorized
+HEADERS RESPOSTA:
+{
+  "date": "Tue, 06 Jan 2026 18:45:33 GMT",
+  "content-type": "application/json; charset=utf-8",
+  "content-length": "24",
+  "connection": "keep-alive",
+  "etag": "W/\"18-XPDV80vbMk4yY1/PADG4jYM4rSI\"",
+  "vary": "Accept-Encoding",
+  "x-powered-by": "Express",
+  "cf-cache-status": "DYNAMIC",
+  "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+  "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=b%2B80a22zBMkKbHTRXdexCwFGPiYul0zlbtkkhIDiK%2BcXjBSKzaz5feVxxGqbexFlRWWq2iVPMjd7bp24RrU8fJTGsqeD7xQSqhmL\"}]}",
+  "server": "cloudflare",
+  "cf-ray": "9b9d5f842e46af70-GRU",
+  "alt-svc": "h3=\":443\"; ma=86400"
+}
+BODY RESPOSTA:
+{
+  "error": "Unauthorized"
+}
+❌ FALHA NESTE CENÁRIO
+
+
+--- TESTE FINALIZADO ---
+Verifique o arquivo debug_response.txt para detalhes.
