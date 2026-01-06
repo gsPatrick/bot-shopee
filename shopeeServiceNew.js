@@ -44,14 +44,17 @@ class ShopeeDownloaderNew {
                 throw new Error('Não foi possível extrair o link do vídeo da página.');
             }
 
-            // Pega o primeiro match (geralmente é o melhor)
+            // Pega o primeiro match
             let videoUrl = mp4Matches[0];
 
-            // Tenta priorizar URLs que pareçam "clean" (sem muitos sufixos numéricos), se houver multiplos
-            // Ex: .../video.mp4 vs .../video.12345.mp4
-            if (mp4Matches.length > 1) {
-                const cleanMatch = mp4Matches.find(m => !m.match(/\.\d+\.\d+\.mp4$/));
-                if (cleanMatch) videoUrl = cleanMatch;
+            // LÓGICA DE LIMPEZA DE URL (Remover Marca D'água)
+            // Transforma: .../video.123.456.mp4 -> .../video.mp4
+            if (videoUrl.match(/\.\d+\.\d+\.mp4$/)) {
+                const originalUrl = videoUrl;
+                videoUrl = videoUrl.replace(/\.\d+\.\d+\.mp4$/, '.mp4');
+                console.log(`   ✨ URL Limpa (Sem Marca D'água): ${videoUrl}`);
+            } else {
+                console.log(`   URL Original mantida: ${videoUrl}`);
             }
 
             console.log(`   URL do Vídeo Encontrada: ${videoUrl}`);
