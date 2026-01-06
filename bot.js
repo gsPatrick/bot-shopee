@@ -83,6 +83,12 @@ async function sendPlanOptions(chatId, reason = 'limit_reached') {
 }
 
 async function generatePayment(chatId, userId, planType) {
+    // Verifica se o token está configurado
+    if (!process.env.PUSHINPAY_TOKEN || process.env.PUSHINPAY_TOKEN === 'SEU_TOKEN_PUSHINPAY_AQUI') {
+        bot.sendMessage(chatId, "🚧 Sistema funcionando, código implementado, mas a conta do PushinPay precisa ser conectada.");
+        return;
+    }
+
     let amount, days, planName;
 
     if (planType === 'monthly') {
