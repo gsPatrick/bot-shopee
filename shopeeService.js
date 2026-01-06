@@ -96,6 +96,23 @@ class ShopeeDownloader {
     async _resolveUrl(url) {
         try {
             console.log(`   Resolvendo URL original: ${url}`);
+
+            // 1. Tenta extrair 'redir' explicitamente (comum em universal-links)
+            if (url.includes('redir=')) {
+                try {
+                    const urlObj = new URL(url);
+                    const redir = urlObj.searchParams.get('redir');
+                    if (redir) {
+                        const decodedRedir = decodeURIComponent(redir);
+                        console.log(`   Redir encontrado: ${decodedRedir}`);
+                        return decodedRedir;
+                    }
+                } catch (e) {
+                    console.error('   Erro ao parsear URL params:', e);
+                }
+            }
+
+            // 2. Tenta resolver via requisição HTTP (HEAD)
             const response = await axios.head(url, {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
@@ -103,8 +120,7 @@ class ShopeeDownloader {
                 maxRedirects: 10,
                 validateStatus: status => status < 400
             });
-            // O Axios automaticamente segue redirects e atualiza a URL final em request.res.responseUrl
-            // Em versões mais novas, response.request.res.responseUrl ou response.request.responseUrl
+
             const finalUrl = response.request.res.responseUrl || url;
             console.log(`   URL Final: ${finalUrl}`);
             return finalUrl;
