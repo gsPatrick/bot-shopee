@@ -90,13 +90,41 @@ class ShopeeDownloader {
     }
 
     /**
+     * Resolve redirecionamentos para obter a URL final (Canonical) do produto
+     * Isso ajuda o extrator a encontrar a versão de melhor qualidade
+     */
+    async _resolveUrl(url) {
+        try {
+            console.log(`   Resolvendo URL original: ${url}`);
+            const response = await axios.head(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+                },
+                maxRedirects: 10,
+                validateStatus: status => status < 400
+            });
+            // O Axios automaticamente segue redirects e atualiza a URL final em request.res.responseUrl
+            // Em versões mais novas, response.request.res.responseUrl ou response.request.responseUrl
+            const finalUrl = response.request.res.responseUrl || url;
+            console.log(`   URL Final: ${finalUrl}`);
+            return finalUrl;
+        } catch (e) {
+            console.warn('   Falha ao resolver redirect, usando URL original.');
+            return url;
+        }
+    }
+
+    /**
      * Baixa o vídeo da Shopee e retorna o caminho do arquivo
      */
     async download(shopeeUrl) {
         // Cria sessão com cookie jar
         const session = this._createSession();
 
-        // 1. Acessa a página inicial para obter cookies e token
+        // 1. Resolve URL para garantir que seja a canônica (melhor qualidade)
+        const finalUrl = await this._resolveUrl(shopeeUrl);
+
+        // 2. Acessa a página inicial para obter cookies e token
         console.log('   Acessando página inicial...');
         const csrfToken = await this._getCsrfToken(session);
         if (!csrfToken) {
@@ -105,9 +133,8 @@ class ShopeeDownloader {
 
         console.log(`   Token capturado: ${csrfToken.substring(0, 16)}...`);
 
-        // 2. Requisição de download usando a mesma sessão (cookies)
-        // Removemos preview=1 para tentar pegar a qualidade original
-        const downloadUrl = `${this.URL_DOWNLOAD}?url=${encodeURIComponent(shopeeUrl)}&csrf_token=${csrfToken}`;
+        // 3. Requisição de download usando a URL final resolvida
+        const downloadUrl = `${this.URL_DOWNLOAD}?url=${encodeURIComponent(finalUrl)}&csrf_token=${csrfToken}`;
 
         console.log('   Baixando vídeo...');
         const response = await session.get(downloadUrl, {
