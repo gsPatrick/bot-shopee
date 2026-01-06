@@ -7,7 +7,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const fs = require('fs');
 const path = require('path');
 
-const ShopeeDownloader = require('./shopeeService');
+const ShopeeDownloader = require('./shopeeServiceNew');
 const UserManager = require('./database');
 const PaymentService = require('./paymentService');
 
