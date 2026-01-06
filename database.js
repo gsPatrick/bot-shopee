@@ -9,7 +9,7 @@ const path = require('path');
 
 class UserManager {
     constructor(dbPath = 'shopee_bot.db') {
-        this.DAILY_LIMIT = 10;
+        this.DAILY_LIMIT = 5;
         this.dbPath = dbPath;
         this.db = null;
         this.initialized = false;

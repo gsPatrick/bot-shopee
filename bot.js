@@ -46,43 +46,93 @@ init().catch(err => {
 // FUNÇÕES AUXILIARES
 // ============================================================
 
-async function sendPaymentOptions(chatId, userId, reason = 'limit_reached') {
+// Mapa temporário para guardar qual plano o usuário está tentando comprar
+// userId -> { amount, days, name }
+const pendingOrders = new Map();
+
+async function sendPlanOptions(chatId, reason = 'limit_reached') {
     let msgHeader = '';
     if (reason === 'limit_reached') {
-        msgHeader = '🚫 *O seu limite diário gratuito acabou!*';
+        msgHeader = '🚫 *O seu limite diário gratuito (5/5) acabou!*';
     } else if (reason === 'expired') {
         msgHeader = '⚠️ *O seu plano Premium venceu!*';
     } else {
-        msgHeader = '💎 *Plano Premium (Ilimitado)*';
+        msgHeader = '💎 *Planos Premium (Ilimitado)*';
     }
 
-    await bot.sendMessage(chatId,
-        `${msgHeader}\n\nRenove agora para continuar baixando vídeos ilimitadamente e sem filas!`,
-        { parse_mode: 'Markdown' }
-    );
-
-    // Gera Pagamento Pix
-    const paymentData = await paymentService.createPixPayment(userId);
-    const paymentId = paymentData.payment_id;
-    const pixCode = paymentData.pix_copy_paste;
-
-    const pixMsg =
-        `Seu código pix (Ilimitado - 30 Dias)\n` +
-        `Clique abaixo para copiar:\n\n` +
-        `\`${pixCode}\`\n\n` +
-        `⚠️ _A PUSHIN PAY atua apenas como processadora de pagamentos._`;
+    const text =
+        `${msgHeader}\n\n` +
+        `Assine o Premium para ter:\n` +
+        `✅ Downloads Ilimitados\n` +
+        `✅ Sem filas de espera\n` +
+        `✅ Suporte Prioritário\n\n` +
+        `Escolha seu plano:`;
 
     const keyboard = {
         inline_keyboard: [
-            [{ text: '✅ Verificar Pagamento', callback_data: `check_pay_${paymentId}` }],
-            [{ text: '💬 Suporte', url: 'https://t.me/seusuporte' }]
+            [{ text: '📅 Mensal - R$ 5,90', callback_data: 'select_plan_monthly' }],
+            [{ text: '🗓️ Trimestral - R$ 23,90', callback_data: 'select_plan_quarterly' }],
+            [{ text: '💬 Falar com Suporte', url: 'https://t.me/seusuporte' }]
         ]
     };
 
-    await bot.sendMessage(chatId, pixMsg, {
+    await bot.sendMessage(chatId, text, {
         parse_mode: 'Markdown',
         reply_markup: keyboard
     });
+}
+
+async function generatePayment(chatId, userId, planType) {
+    let amount, days, planName;
+
+    if (planType === 'monthly') {
+        amount = 5.90;
+        days = 30;
+        planName = 'Mensal';
+    } else if (planType === 'quarterly') {
+        amount = 23.90;
+        days = 90;
+        planName = 'Trimestral';
+    } else {
+        return;
+    }
+
+    // Mensagem de carregando
+    const loadingMsg = await bot.sendMessage(chatId, `🔄 Gerando Pix para o plano *${planName}*...`, { parse_mode: 'Markdown' });
+
+    try {
+        // Gera Pagamento Pix
+        const paymentData = await paymentService.createPixPayment(userId, amount, `Plano ${planName}`);
+        const paymentId = paymentData.payment_id;
+        const pixCode = paymentData.pix_copy_paste;
+
+        // Salva detalhes do pedido pendente (para saber quantos dias dar quando confirmar)
+        pendingOrders.set(paymentId, { userId, days, amount, planName });
+
+        const pixMsg =
+            `📲 *Pagamento Gerado - Plano ${planName}*\n` +
+            `Valor: *R$ ${amount.toFixed(2).replace('.', ',')}*\n\n` +
+            `Clique abaixo para copiar:\n` +
+            `\`${pixCode}\`\n\n` +
+            `⚠️ _Aguardando confirmação automática..._`;
+
+        const keyboard = {
+            inline_keyboard: [
+                [{ text: '✅ Já paguei (Verificar)', callback_data: `check_pay_${paymentId}` }],
+                [{ text: '🔙 Voltar', callback_data: 'back_to_plans' }]
+            ]
+        };
+
+        bot.deleteMessage(chatId, loadingMsg.message_id).catch(() => { });
+        await bot.sendMessage(chatId, pixMsg, {
+            parse_mode: 'Markdown',
+            reply_markup: keyboard
+        });
+
+    } catch (e) {
+        bot.deleteMessage(chatId, loadingMsg.message_id).catch(() => { });
+        bot.sendMessage(chatId, '❌ Erro ao gerar Pix. Tente novamente mais tarde.');
+    }
 }
 
 // ============================================================
@@ -97,15 +147,15 @@ bot.onText(/\/(start|help)/, (msg) => {
 Envie um link de vídeo da Shopee e eu baixo para você sem marca d'água!
 
 *Comandos:*
-/plano - Ver status do plano ou assinar Premium
-/ilimitado - Assinar plano Ilimitado (Premium)
+/plano - Ver planos Premium
+/ilimitado - Ver planos Premium
 
 *Links suportados:*
 • shopee.com.br
 • shp.ee
 • sv.shopee.com.br
 
-_Bot desenvolvido para fins educacionais._
+*Limite Grátis:* 5 downloads/dia
     `;
     bot.sendMessage(msg.chat.id, welcomeText, { parse_mode: 'Markdown' });
 });
@@ -122,7 +172,7 @@ bot.onText(/\/(plano|ilimitado)/, (msg) => {
             { parse_mode: 'Markdown' }
         );
     } else {
-        sendPaymentOptions(chatId, userId, 'command');
+        sendPlanOptions(chatId, 'command');
     }
 });
 
@@ -150,7 +200,7 @@ bot.on('message', async (msg) => {
     const status = userManager.checkAllowance(userId);
 
     if (!status.allowed) {
-        await sendPaymentOptions(chatId, userId, 'limit_reached');
+        await sendPlanOptions(chatId, 'limit_reached');
         return;
     }
 
@@ -174,13 +224,13 @@ bot.on('message', async (msg) => {
             footerText = '💎 Usuário Premium (Ilimitado)';
         } else {
             const newStatus = userManager.checkAllowance(userId);
-            footerText = `📉 Downloads restantes hoje: ${newStatus.downloads_left}/${userManager.DAILY_LIMIT}`;
+            footerText = `📉 Restantes hoje: ${newStatus.downloads_left}/${userManager.DAILY_LIMIT}`;
         }
 
         // Envia o vídeo
         bot.sendChatAction(chatId, 'upload_video');
         await bot.sendVideo(chatId, filepath, {
-            caption: `✅ Vídeo da Shopee sem marca d'água!\n\n_${footerText}_\n\n_Lembre-se de creditar o criador original._`,
+            caption: `✅ Vídeo da Shopee sem marca d'água!\n\n_${footerText}_\n\n`,
             parse_mode: 'Markdown'
         });
 
@@ -217,38 +267,60 @@ bot.on('callback_query', async (query) => {
     const messageId = query.message.message_id;
     const userId = query.from.id;
 
-    if (data.startsWith('check_pay_')) {
+    // Seleção de Planos
+    if (data === 'select_plan_monthly') {
+        bot.answerCallbackQuery(query.id);
+        await generatePayment(chatId, userId, 'monthly');
+    }
+    else if (data === 'select_plan_quarterly') {
+        bot.answerCallbackQuery(query.id);
+        await generatePayment(chatId, userId, 'quarterly');
+    }
+    else if (data === 'back_to_plans') {
+        bot.answerCallbackQuery(query.id);
+        bot.deleteMessage(chatId, messageId).catch(() => { });
+        sendPlanOptions(chatId, 'command');
+    }
+    else if (data.startsWith('check_pay_')) {
         const paymentId = data.replace('check_pay_', '');
+
+        bot.answerCallbackQuery(query.id, { text: 'Verificando...' });
+
         const paid = await paymentService.checkPaymentStatus(paymentId);
 
         if (paid) {
-            // Adiciona 30 dias de premium
-            userManager.addPremiumTime(userId, 30);
+            const order = pendingOrders.get(paymentId) || { days: 30 };
+
+            // Adiciona premium
+            userManager.addPremiumTime(userId, order.days);
+            pendingOrders.delete(paymentId);
 
             try {
                 await bot.editMessageText(
-                    '✅ *Pagamento confirmado!*\n\nVocê agora é **Premium** por 30 dias.\nDownloads ilimitados liberados! 🚀',
+                    '✅ *Pagamento confirmado!*\n\n' +
+                    `Você agora é **Premium**!\n` +
+                    `Validade: ${order.days} dias\n` +
+                    'Downloads ilimitados liberados! 🚀',
                     { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' }
                 );
-                bot.answerCallbackQuery(query.id, { text: 'Pagamento Aprovado!' });
             } catch (e) {
                 bot.sendMessage(chatId, '✅ Pagamento confirmado! Você agora é Premium.');
             }
         } else {
-            bot.answerCallbackQuery(query.id, {
-                text: 'Pagamento ainda não confirmado. Tente novamente em instantes.',
-                show_alert: true
-            });
+            bot.sendMessage(chatId, '⏳ Pagamento ainda não identificado. Aguarde alguns segundos e tente novamente.');
         }
     } else if (data === 'buy_premium') {
+        // Legado
         bot.answerCallbackQuery(query.id);
-        await sendPaymentOptions(chatId, userId, 'command');
+        await sendPlanOptions(chatId, userId, 'command');
     }
 });
 
 // Tratamento de erros
 bot.on('polling_error', (error) => {
-    console.error('Polling error:', error.code, error.message);
+    if (error.code !== 'ETELEGRAM' && error.code !== 'ECONNRESET') {
+        console.error('Polling error:', error.code, error.message);
+    }
 });
 
 process.on('SIGINT', () => {

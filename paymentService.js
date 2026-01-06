@@ -17,13 +17,12 @@ class PaymentService {
     /**
      * Cria um pagamento Pix real na PushinPay
      * @param {number} userId - ID do usuário no Telegram
+     * @param {number} amount - Valor do pagamento
+     * @param {string} description - Descrição do pedido
      * @returns {Promise<{ payment_id: string, pix_copy_paste: string }>}
      */
-    async createPixPayment(userId) {
+    async createPixPayment(userId, amount, description = 'Plano Premium') {
         try {
-            // Valor do plano (R$ 19,90) - Pode parametrizar depois
-            const amount = 19.90;
-
             if (!process.env.PUSHINPAY_TOKEN) {
                 console.warn('⚠️ Token PushinPay não configurado. Usando Mock.');
                 return this._createMockPayment();
@@ -31,7 +30,8 @@ class PaymentService {
 
             const response = await this.api.post('/api/pix/cashIn', {
                 value: amount,
-                webhook_url: process.env.WEBHOOK_URL || null
+                webhook_url: process.env.WEBHOOK_URL || null,
+                description: description
             });
 
             if (response.status !== 200 && response.status !== 201) {
@@ -43,7 +43,7 @@ class PaymentService {
 
             return {
                 payment_id: data.id,
-                pix_copy_paste: data.qr_code // Verifica se a API retorna 'qr_code' ou 'qr_code_base64'
+                pix_copy_paste: data.qr_code
             };
 
         } catch (error) {
@@ -53,15 +53,8 @@ class PaymentService {
         }
     }
 
-    /**
-     * Verifica o status do pagamento na PushinPay
-     * @param {string} paymentId 
-     * @returns {Promise<boolean>}
-     */
     async checkPaymentStatus(paymentId) {
-        if (!process.env.PUSHINPAY_TOKEN) return true; // Mock sempre aprova
-
-        // Se for ID de mock, aprova direto
+        if (!process.env.PUSHINPAY_TOKEN) return true;
         if (paymentId.includes('mock')) return true;
 
         try {
